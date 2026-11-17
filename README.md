@@ -67,10 +67,6 @@ As linhas começadas por `;` são comentários.
 | `H_aleatorio_80x80.txt` | 80×80 | 28% de obstáculos e custos aleatórios de 1 a 9 |
 | `I_sem_caminho_100x100.txt` | 100×100 | G fechado num anel de obstáculos: provar que não há caminho |
 
-> **Os mapas A, B e C têm de ser copiados do Anexo A do enunciado** com exatamente estes nomes.
-> Enquanto não existirem, `experiencias.py` mostra um aviso e o teste `TestAnexoA` fica ignorado (*skipped*).
-> Quando forem adicionados, o teste compara automaticamente os custos com os de referência (17/17, 20/18,83, sem caminho).
-
 ## Decisões de implementação
 
 - O teste de objetivo é feito quando o nó sai da fronteira, não quando é gerado. É isso que garante a otimalidade.
