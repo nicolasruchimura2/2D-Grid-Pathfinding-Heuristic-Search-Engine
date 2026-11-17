@@ -158,6 +158,21 @@ class TestCenarios(unittest.TestCase):
                         self.verificar_caminho(g, r, m)
 
 
+class TestGrelhaDaAula(unittest.TestCase):
+    """Grelha 8×8 da aula 9: custo 14; as notas indicam 37 nós (Dijkstra) e 32 (A*) com
+    desempate por coordenadas. Com desempate FIFO o Dijkstra expande 36; o custo não muda."""
+
+    MAPA = ("S.......\n.######.\n......#.\n.####.#.\n"
+            ".#....#.\n.#.####.\n...#....\n.#.#.##G\n")
+
+    def test_resultados_da_aula(self):
+        g = analisar_mapa(self.MAPA)
+        d, a = dijkstra(g, 4), astar(g, 4, "manhattan")
+        self.assertEqual((d.custo, a.custo), (14, 14))
+        self.assertEqual(a.expandidos, 32)
+        self.assertEqual(d.expandidos, 36)
+
+
 class TestAnexoA(unittest.TestCase):
     """Validação com os resultados de referência do enunciado (Anexo A)."""
 

@@ -64,6 +64,11 @@ A consistência resulta de h(n) ≤ c(n, n') + h(n') para todos os movimentos.
 Esta condição verifica-se porque nenhum movimento custa menos do que a distância que a heurística assume percorrer com custo unitário.
 Em 4 direções as três heurísticas são consistentes, e verifica-se Euclidiana ≤ Octile ≤ Manhattan, por isso a Manhattan é a mais informada.
 
+Para o movimento diagonal, as aulas sugerem a Euclidiana ou a Chebyshev, max(dx, dy).
+A Chebyshev é admissível em 8 direções, mas é a distância exata quando a diagonal custa 1, e aqui custa √2.
+Como octile = max(dx, dy) + (√2 − 1) · min(dx, dy) ≥ max(dx, dy), a octile domina-a e, a menos de empates, nunca expande mais nós.
+Por isso usámos a octile como heurística de referência em 8 direções.
+
 ## 2. Cenários e metodologia
 
 Usámos nove cenários, todos guardados em ficheiros de texto na pasta `cenarios/`.
@@ -116,16 +121,28 @@ Além disso, os testes automáticos (`python -m unittest`) verificam em todos os
 
 ### 3.1 Validação (Anexo A)
 
-> ⚠ **A preencher:** copiar os mapas do Anexo A para `cenarios/A_labirinto_7x10.txt`, `cenarios/B_terrenos_5x9.txt` e `cenarios/C_sem_caminho_4x6.txt`, e correr `python experiencias.py`.
-> A tabela é gerada em `resultados/tabelas.md`, e o teste `TestAnexoA` passa a comparar os custos automaticamente.
-
-| Cenário | Custo 4 dir. (esperado → obtido) | Custo 8 dir. (esperado → obtido) | Nós 4 dir. Dijkstra / A* |
+| Cenário | Custo 4 dir. (esperado → obtido) | Custo 8 dir. (esperado → obtido) | Nós 4 dir. Dijkstra / A* (esperado → obtido) |
 |---|---|---|---|
-| A (labirinto) | 17 → [ ] | 17 → [ ] | ≈ 35 / 27 → [ ] |
-| B (terrenos) | 20 → [ ] | 18,83 → [ ] | ≈ 31 / 29 → [ ] |
-| C (sem caminho) | sem caminho → [ ] | sem caminho → [ ] | 6 / 6 → [ ] |
+| A (labirinto) | 17 → 17 ✔ | 17 → 17 ✔ | 35 / 27 → 35 / 27 ✔ |
+| B (terrenos) | 20 → 20 ✔ | 18,83 → 18,83 ✔ | ≈ 31 / 29 → 30 / 29 |
+| C (sem caminho) | sem caminho → sem caminho ✔ | sem caminho → sem caminho ✔ | 6 / 6 → 6 / 6 ✔ |
 
-Os números de nós de referência são aproximados, porque dependem do desempate.
+Todos os custos coincidem com os de referência, em 4 e em 8 direções, tanto com o Dijkstra como com o A*.
+Esta comparação é verificada automaticamente pelo teste `TestAnexoA`.
+
+A única diferença está nos nós expandidos pelo Dijkstra no cenário B: 30 em vez de 31.
+A diferença vem apenas do desempate.
+No código das aulas, a fronteira guarda pares `(g, (linha, coluna))`, pelo que os empates em g são resolvidos pela menor coordenada.
+No nosso planeador, os empates são resolvidos pela ordem de inserção (FIFO).
+Para o confirmar, corremos o código das aulas sobre os mesmos mapas:
+
+| Mapa | Código das aulas (desempate por coordenadas) | Mesmo código com desempate FIFO | Nosso planeador |
+|---|---|---|---|
+| Grelha 8×8 da aula 9 | Dijkstra 37, A* 32 (custo 14) | Dijkstra 36 | Dijkstra 36, A* 32 (custo 14) |
+| B (terrenos) | Dijkstra 31, A* 29 (custo 20) | Dijkstra 30 | Dijkstra 30, A* 29 (custo 20) |
+
+Com o mesmo desempate, os resultados são idênticos.
+O custo e a otimalidade nunca dependem do desempate; só o número de nós expandidos muda.
 
 ### 3.2 Dijkstra vs. A* (4 direções, Manhattan, desempate FIFO)
 
