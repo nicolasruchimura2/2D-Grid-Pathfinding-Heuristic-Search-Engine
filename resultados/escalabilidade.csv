@@ -1,0 +1,19 @@
+n,celulas,configuracao,custo,expandidos,memoria,tempo_ms
+25,625,Dijkstra,38.0,570,574,0.867
+25,625,A* Manhattan (FIFO),38.0,336,404,0.627
+25,625,A* Manhattan (menor h),38.0,43,108,0.12
+50,2500,Dijkstra,76.0,2304,2314,3.874
+50,2500,A* Manhattan (FIFO),76.0,1379,1516,2.583
+50,2500,A* Manhattan (menor h),76.0,127,260,0.318
+100,10000,Dijkstra,154.0,9226,9245,16.143
+100,10000,A* Manhattan (FIFO),154.0,5236,5519,10.321
+100,10000,A* Manhattan (menor h),154.0,236,503,0.636
+150,22500,Dijkstra,232.0,20791,20821,40.098
+150,22500,A* Manhattan (FIFO),232.0,12105,12543,24.697
+150,22500,A* Manhattan (menor h),232.0,446,854,1.249
+200,40000,Dijkstra,308.0,36999,37041,70.517
+200,40000,A* Manhattan (FIFO),308.0,21373,21974,43.769
+200,40000,A* Manhattan (menor h),308.0,398,944,1.123
+300,90000,Dijkstra,464.0,83343,83405,164.081
+300,90000,A* Manhattan (FIFO),464.0,47188,48116,101.296
+300,90000,A* Manhattan (menor h),464.0,1279,2078,3.704
