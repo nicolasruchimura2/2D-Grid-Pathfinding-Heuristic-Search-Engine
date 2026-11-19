@@ -20,8 +20,6 @@ from dataclasses import dataclass, field
 from . import heuristicas
 from .grelha import Celula, Grelha
 
-DESEMPATES = ("fifo", "h")
-
 # Tolerância na comparação de custos g. Somas com √2 feitas por ordens diferentes diferem
 # em ~1e-16 (ex.: 1 + √2 + 1 vs. 1 + 1 + √2); sem tolerância, esse ruído seria tratado como
 # "caminho melhor" e provocaria reaberturas espúrias. As diferenças reais entre custos
@@ -50,7 +48,7 @@ class Resultado:
 
 
 def pesquisar(grelha: Grelha, movimento: int = 4, heuristica: str | None = None,
-              w: float = 1.0, reabrir: bool | None = None, desempate: str = "fifo") -> Resultado:
+              w: float = 1.0, reabrir: bool | None = None) -> Resultado:
     """Pesquisa de custo mínimo de `grelha.inicio` até `grelha.objetivo`.
 
     movimento   4 ou 8 direções.
@@ -58,15 +56,13 @@ def pesquisar(grelha: Grelha, movimento: int = 4, heuristica: str | None = None,
     w           peso da heurística (Weighted A*); w = 1 é o A* normal.
     reabrir     permitir reabrir nós fechados quando se encontra um g menor.
                 Por omissão, só quando w > 1 (com w·h a heurística deixa de ser consistente).
-    desempate   'fifo': f igual → ordem de inserção (contador);
-                'h':    f igual → menor h primeiro e só depois a ordem de inserção.
+
+    Empates em f são resolvidos pela ordem de inserção (contador), para resultados reprodutíveis.
     """
     if movimento not in (4, 8):
         raise ValueError("movimento tem de ser 4 ou 8")
     if w < 1:
         raise ValueError("w tem de ser ≥ 1")
-    if desempate not in DESEMPATES:
-        raise ValueError(f"desempate tem de ser um de {DESEMPATES}")
     if heuristica is None and w != 1:
         raise ValueError("w só faz sentido com uma heurística")
     if reabrir is None:
@@ -78,7 +74,6 @@ def pesquisar(grelha: Grelha, movimento: int = 4, heuristica: str | None = None,
         h = None
     else:
         h = heuristicas.construir(heuristica, objetivo, grelha.custo_min)
-    usar_h_desempate = desempate == "h" and h is not None
 
     contador = itertools.count()
     g: dict[Celula, float] = {inicio: 0.0}
@@ -86,14 +81,14 @@ def pesquisar(grelha: Grelha, movimento: int = 4, heuristica: str | None = None,
     fechados: set[Celula] = set()
 
     h0 = h(inicio) if h else 0.0
-    # Entrada: (f, desempate_h, contador, g, nó). O contador garante ordem total e reprodutível.
-    fronteira = [(w * h0, h0 if usar_h_desempate else 0.0, next(contador), 0.0, inicio)]
+    # Entrada: (f, contador, g, nó). O contador desempata por ordem de inserção (FIFO).
+    fronteira = [(w * h0, next(contador), 0.0, inicio)]
     expandidos = reaberturas = 0
     gerados = 1
     encontrado = False
 
     while fronteira:
-        _, _, _, g_no, no = heapq.heappop(fronteira)
+        _, _, g_no, no = heapq.heappop(fronteira)
         # Entradas obsoletas: o nó já foi fechado, ou entretanto encontrou-se um g menor.
         if no in fechados or g_no > g[no]:
             continue
@@ -113,8 +108,7 @@ def pesquisar(grelha: Grelha, movimento: int = 4, heuristica: str | None = None,
                 g[viz] = novo_g
                 pai[viz] = no
                 hv = h(viz) if h else 0.0
-                heapq.heappush(fronteira, (novo_g + w * hv, hv if usar_h_desempate else 0.0,
-                                           next(contador), novo_g, viz))
+                heapq.heappush(fronteira, (novo_g + w * hv, next(contador), novo_g, viz))
                 gerados += 1
 
     caminho = None

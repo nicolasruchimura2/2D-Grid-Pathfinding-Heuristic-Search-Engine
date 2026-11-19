@@ -11,6 +11,7 @@ Dijkstra, A* e Weighted A* implementados de raiz, em Python, sobre uma grelha co
 
 ```bash
 pip install -r requirements.txt
+pip install notebook            # só para abrir/reexecutar experiencias.ipynb
 ```
 
 ## Utilização
@@ -19,11 +20,12 @@ pip install -r requirements.txt
 python gerar_cenarios.py        # (re)gera os 6 cenários do grupo em cenarios/ (semente 42)
 python -m unittest -v           # testes
 python experiencias.py          # todas as experiências -> resultados/ e figuras/ (~15 s)
+jupyter notebook experiencias.ipynb   # as mesmas experiências, com tabelas e gráficos visíveis
 python planear.py cenarios/F_terrenos_40x40.txt --alg astar --mov 8
 ```
 
 Opções de `planear.py`: `--alg dijkstra|astar`, `--heur manhattan|euclidiana|octile`, `--mov 4|8`,
-`--w <peso>` (Weighted A*), `--desempate fifo|h` e `--sem-mapa`.
+`--w <peso>` (Weighted A*) e `--sem-mapa`.
 
 ## Estrutura
 
@@ -34,10 +36,11 @@ Opções de `planear.py`: `--alg dijkstra|astar`, `--heur manhattan|euclidiana|o
 | `pathfinding/pesquisa.py` | função única `pesquisar()`: Dijkstra (sem h), A* (w = 1) e Weighted A* (w > 1) |
 | `gerar_cenarios.py` | geradores determinísticos dos cenários D–I |
 | `experiencias.py` | medições, CSVs, tabelas e figuras |
+| `experiencias.ipynb` | notebook executado: todas as experiências com os outputs visíveis |
 | `planear.py` | CLI para um mapa individual |
 | `tests/` | testes unitários e de propriedades (otimalidade, limite w·C*, validade dos caminhos) |
 | `cenarios/` | mapas em texto |
-| `resultados/` | `comparacao.csv`, `desempate.csv`, `weighted.csv`, `escalabilidade.csv`, `tabelas.md` |
+| `resultados/` | `comparacao.csv`, `weighted.csv`, `escalabilidade.csv`, `tabelas.md` |
 | `figuras/` | gráficos do relatório e mapas com os caminhos e os nós expandidos |
 | `relatorio/RELATORIO.md` | texto do relatório com os resultados |
 
@@ -71,9 +74,7 @@ As linhas começadas por `;` são comentários.
 
 - O teste de objetivo é feito quando o nó sai da fronteira, não quando é gerado. É isso que garante a otimalidade.
 - A fronteira é um `heapq` com eliminação preguiçosa: as entradas obsoletas são ignoradas ao sair.
-- O desempate por omissão é FIFO (contador de inserção).
-  A opção `desempate="h"` prefere o menor h em caso de empate em f, o que reduz muito os nós expandidos em zonas de custo uniforme (ver `resultados/tabelas.md`).
+- Os empates em f são resolvidos pela ordem de inserção (contador), para os resultados serem reprodutíveis.
 - As comparações de g usam uma tolerância de 1e-9.
   Sem ela, somas com √2 feitas por ordens diferentes geram "melhorias" de ~1e-16 e reaberturas espúrias.
-- O Weighted A* reabre nós fechados por omissão (`reabrir=True` quando w > 1).
-  `experiencias.py` mede também a variante sem reabertura.
+- O Weighted A* (w > 1) reabre nós fechados quando encontra um g menor, porque w·h deixa de ser consistente.

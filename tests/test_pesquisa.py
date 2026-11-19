@@ -116,14 +116,13 @@ class TestCenarios(unittest.TestCase):
             for m in (4, 8):
                 d = dijkstra(g, m)
                 for h in ADMISSIVEIS[m]:
-                    for desempate in ("fifo", "h"):
-                        with self.subTest(cenario=g.nome, mov=m, h=h, desempate=desempate):
-                            a = astar(g, m, h, desempate=desempate)
-                            self.assertEqual(a.encontrou, d.encontrou)
-                            if d.encontrou:
-                                self.assertAlmostEqual(a.custo, d.custo, places=9)
-                                self.verificar_caminho(g, a, m)
-                                self.assertLessEqual(a.expandidos, d.expandidos)
+                    with self.subTest(cenario=g.nome, mov=m, h=h):
+                        a = astar(g, m, h)
+                        self.assertEqual(a.encontrou, d.encontrou)
+                        if d.encontrou:
+                            self.assertAlmostEqual(a.custo, d.custo, places=9)
+                            self.verificar_caminho(g, a, m)
+                            self.assertLessEqual(a.expandidos, d.expandidos)
 
     def test_weighted_respeita_limite(self):
         for g in self.grelhas:

@@ -5,7 +5,6 @@
 
 Saídas:
     resultados/comparacao.csv      cenário × algoritmo × heurística × movimento
-    resultados/desempate.csv       efeito do desempate (FIFO vs. menor h) no A*
     resultados/weighted.csv        Weighted A* para w ∈ {1; 1,2; 1,5; 2; 3; 5}
     resultados/escalabilidade.csv  mapas abertos n×n de tamanho crescente
     resultados/tabelas.md          tabelas prontas a colar no relatório
@@ -138,18 +137,6 @@ def comparar(grelhas: list[Grelha], rep: int) -> list[dict]:
     return linhas
 
 
-def desempates(grelhas: list[Grelha], rep: int) -> list[dict]:
-    linhas = []
-    for g in grelhas:
-        for m in (4, 8):
-            for d in ("fifo", "h"):
-                r, t, _ = medir(g, rep, movimento=m, heuristica=H_REF[m], desempate=d)
-                linhas.append({"cenario": g.nome, "movimento": m, "heuristica": H_REF[m],
-                               "desempate": d, "custo": r.custo, "expandidos": r.expandidos,
-                               "tempo_ms": round(t, 3)})
-    return linhas
-
-
 def weighted(grelhas: list[Grelha], rep: int) -> list[dict]:
     linhas = []
     for g in grelhas:
@@ -157,18 +144,17 @@ def weighted(grelhas: list[Grelha], rep: int) -> list[dict]:
             otimo = pesquisar(g, m).custo
             if math.isinf(otimo):
                 continue
-            for reabrir in (True, False):
-                base = None
-                for w in PESOS:
-                    r, t, _ = medir(g, rep, movimento=m, heuristica=H_REF[m], w=w, reabrir=reabrir)
-                    base = base or r.expandidos
-                    linhas.append({
-                        "cenario": g.nome, "movimento": m, "heuristica": H_REF[m], "w": w,
-                        "reabrir": reabrir, "custo": r.custo, "custo_otimo": otimo,
-                        "excesso": r.custo / otimo - 1, "limite": w - 1,
-                        "expandidos": r.expandidos, "reaberturas": r.reaberturas,
-                        "variacao_nos": r.expandidos / base - 1, "tempo_ms": round(t, 3),
-                    })
+            base = None
+            for w in PESOS:
+                r, t, _ = medir(g, rep, movimento=m, heuristica=H_REF[m], w=w)
+                base = base or r.expandidos
+                linhas.append({
+                    "cenario": g.nome, "movimento": m, "heuristica": H_REF[m], "w": w,
+                    "custo": r.custo, "custo_otimo": otimo,
+                    "excesso": r.custo / otimo - 1, "limite": w - 1,
+                    "expandidos": r.expandidos, "reaberturas": r.reaberturas,
+                    "variacao_nos": r.expandidos / base - 1, "tempo_ms": round(t, 3),
+                })
     return linhas
 
 
@@ -176,9 +162,7 @@ def escalabilidade(rep: int) -> list[dict]:
     linhas = []
     for n in TAMANHOS:
         g = aberto(random.Random(SEMENTE + 100), n=n, nome=f"aberto_{n}x{n}")
-        for rotulo, kw in (("Dijkstra", {}),
-                           ("A* Manhattan (FIFO)", {"heuristica": "manhattan"}),
-                           ("A* Manhattan (menor h)", {"heuristica": "manhattan", "desempate": "h"})):
+        for rotulo, kw in (("Dijkstra", {}), ("A* Manhattan", {"heuristica": "manhattan"})):
             r, t, _ = medir(g, rep, movimento=4, **kw)
             linhas.append({"n": n, "celulas": n * n, "configuracao": rotulo, "custo": r.custo,
                            "expandidos": r.expandidos, "memoria": r.memoria, "tempo_ms": round(t, 3)})
@@ -240,7 +224,6 @@ def fig_heuristicas(plt, comp: list[dict]) -> None:
 
 
 def fig_weighted(plt, wa: list[dict]) -> None:
-    wa = [l for l in wa if l["reabrir"]]
     fig, eixos = plt.subplots(2, 2, figsize=(11, 7), sharex=True)
     cenarios = list(dict.fromkeys(l["cenario"] for l in wa))
     for col, m in enumerate((4, 8)):
@@ -270,6 +253,35 @@ def fig_weighted(plt, wa: list[dict]) -> None:
     pegas, rotulos_ = eixos[0][0].get_legend_handles_labels()
     fig.legend(pegas, rotulos_, loc="upper center", ncol=len(cenarios), bbox_to_anchor=(0.5, 1.0))
     fig.savefig(FIGURAS / "weighted_astar.png", dpi=200, bbox_inches="tight")
+    plt.close(fig)
+
+
+def fig_weighted_compacto(plt, wa: list[dict], movimento: int = 4) -> None:
+    """Versão de uma linha para o mini-relatório: só os cenários grandes, um modelo de movimento."""
+    pts_todos = [l for l in wa if l["movimento"] == movimento
+                 and not l["cenario"].startswith(tuple("ABC"))]
+    cenarios = list(dict.fromkeys(l["cenario"] for l in pts_todos))
+    fig, (ax_n, ax_e) = plt.subplots(1, 2, figsize=(10, 3.1))
+    for i, c in enumerate(cenarios):
+        pts = [l for l in pts_todos if l["cenario"] == c]
+        ws = [p["w"] for p in pts]
+        ax_n.plot(ws, [100 * p["expandidos"] / pts[0]["expandidos"] for p in pts], marker="o", ms=4,
+                  color=SERIES[i], label=nome_curto(c))
+        ax_e.plot(ws, [100 * p["excesso"] for p in pts], marker="o", ms=4, color=SERIES[i])
+    ax_e.plot(PESOS, [100 * (w - 1) for w in PESOS], ls="--", color=TINTA2, lw=1.5)
+    maximo = max(100 * p["excesso"] for p in pts_todos)
+    ax_e.set_ylim(-2, maximo * 1.15)
+    ax_e.text(1.45, maximo * 1.02, "limite w − 1", fontsize=8, color=TINTA2)
+    ax_n.axhline(100, color=TINTA2, lw=1, ls=":")
+    ax_n.set_ylabel("nós expandidos (% de w = 1)")
+    ax_e.set_ylabel("excesso de custo (%)")
+    for ax in (ax_n, ax_e):
+        ax.set_xlabel(f"peso w ({movimento} direções, {H_REF[movimento]})")
+        ax.set_xticks(PESOS, [num(w, 1).replace(",0", "") for w in PESOS])
+    fig.tight_layout(rect=(0, 0, 1, 0.88))
+    pegas, rotulos_ = ax_n.get_legend_handles_labels()
+    fig.legend(pegas, rotulos_, loc="upper center", ncol=len(cenarios), bbox_to_anchor=(0.5, 1.0))
+    fig.savefig(FIGURAS / "weighted_astar_compacto.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -345,7 +357,7 @@ def fig_caminhos(plt, g: Grelha, movimento: int = 4) -> None:
 
 
 # ---------------------------------------------------------------- tabelas
-def tabelas(grelhas, comp, desemp, wa, esc) -> str:
+def tabelas(grelhas, comp, wa, esc) -> str:
     def linha_de(c, m, alg, h="-"):
         return next(l for l in comp if l["cenario"] == c and l["movimento"] == m
                     and l["algoritmo"] == alg and l["heuristica"] == h)
@@ -368,7 +380,7 @@ def tabelas(grelhas, comp, desemp, wa, esc) -> str:
         nos = f"{linha_de(nome, 4, 'Dijkstra')['expandidos']} / {linha_de(nome, 4, 'A*', 'manhattan')['expandidos']}"
         out.append(f"| {nome} | {cel[0]} | {cel[1]} | {nos} |")
 
-    out += ["", "## Dijkstra vs. A* (4 direções, Manhattan, desempate FIFO)", "",
+    out += ["", "## Dijkstra vs. A* (4 direções, Manhattan)", "",
             "| Cenário | Dijkstra: custo / nós / tempo (ms) | A*: custo / nós / tempo (ms) | Ganho em nós | Ganho em tempo |",
             "|---|---|---|---|---|"]
     for g in grelhas:
@@ -393,29 +405,18 @@ def tabelas(grelhas, comp, desemp, wa, esc) -> str:
                 cels.append(s)
             out.append(f"| {g.nome} | {m} | " + " | ".join(cels) + " |")
 
-    out += ["", "## Efeito do desempate no A* (nós expandidos)", "",
-            "| Cenário | Mov. | FIFO | menor h | Redução |", "|---|---|---|---|---|"]
-    for g in grelhas:
-        for m in (4, 8):
-            f = next(l for l in desemp if l["cenario"] == g.nome and l["movimento"] == m and l["desempate"] == "fifo")
-            h = next(l for l in desemp if l["cenario"] == g.nome and l["movimento"] == m and l["desempate"] == "h")
-            out.append(f"| {g.nome} | {m} | {f['expandidos']} | {h['expandidos']} | "
-                       f"{num(100 * (1 - h['expandidos'] / f['expandidos']), 1)}% |")
-
     def var(x: float) -> str:
         pct = round(100 * x)
         return ("+" if pct > 0 else "−" if pct < 0 else "") + f"{abs(pct)}%"
 
-    for reabrir in (True, False):
-        titulo = "com reabertura de nós fechados" if reabrir else "sem reabertura"
-        out += ["", f"## Weighted A*, {titulo} (excesso de custo / variação de nós face a w = 1)", "",
-                "| Cenário | Mov. | " + " | ".join(f"w={num(w, 1)}" for w in PESOS) + " |",
-                "|---|---|" + "---|" * len(PESOS)]
-        for c in dict.fromkeys(l["cenario"] for l in wa):
-            for m in (4, 8):
-                pts = [l for l in wa if l["cenario"] == c and l["movimento"] == m and l["reabrir"] == reabrir]
-                out.append(f"| {c} | {m} | " + " | ".join(
-                    f"{num(100 * p['excesso'], 1)}% / {var(p['variacao_nos'])}" for p in pts) + " |")
+    out += ["", "## Weighted A* (excesso de custo / variação de nós face a w = 1)", "",
+            "| Cenário | Mov. | " + " | ".join(f"w={num(w, 1)}" for w in PESOS) + " |",
+            "|---|---|" + "---|" * len(PESOS)]
+    for c in dict.fromkeys(l["cenario"] for l in wa):
+        for m in (4, 8):
+            pts = [l for l in wa if l["cenario"] == c and l["movimento"] == m]
+            out.append(f"| {c} | {m} | " + " | ".join(
+                f"{num(100 * p['excesso'], 1)}% / {var(p['variacao_nos'])}" for p in pts) + " |")
 
     out += ["", "## Escalabilidade (mapa aberto n×n, 5% obstáculos, 4 direções)", "",
             "| n | Configuração | Custo | Nós expandidos | Memória (nós em g) | Tempo (ms) |",
@@ -455,18 +456,15 @@ def main() -> None:
     print(f"{len(grelhas)} cenários, {args.rep} repetições por medição")
     print("· comparação de algoritmos e heurísticas")
     comp = comparar(grelhas, args.rep)
-    print("· desempate")
-    desemp = desempates(grelhas, args.rep)
     print("· Weighted A*")
     wa = weighted(grelhas, args.rep)
     print("· escalabilidade")
     esc = escalabilidade(max(3, args.rep // 2))
 
     escrever_csv(RESULTADOS / "comparacao.csv", comp)
-    escrever_csv(RESULTADOS / "desempate.csv", desemp)
     escrever_csv(RESULTADOS / "weighted.csv", wa)
     escrever_csv(RESULTADOS / "escalabilidade.csv", esc)
-    md = tabelas(grelhas, comp, desemp, wa, esc)
+    md = tabelas(grelhas, comp, wa, esc)
     (RESULTADOS / "tabelas.md").write_text(md, encoding="utf-8")
 
     if not args.sem_figuras:
@@ -477,6 +475,7 @@ def main() -> None:
         print("· figuras")
         fig_heuristicas(plt, comp)
         fig_weighted(plt, wa)
+        fig_weighted_compacto(plt, wa)
         fig_escalabilidade(plt, esc)
         for g in grelhas:
             fig_caminhos(plt, g, 4)

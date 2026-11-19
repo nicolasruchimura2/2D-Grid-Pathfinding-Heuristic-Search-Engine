@@ -41,7 +41,6 @@ def main() -> None:
                     help="heurística do A* (omissão: manhattan em 4 dir., octile em 8 dir.)")
     ap.add_argument("--mov", type=int, choices=(4, 8), default=4, help="modelo de movimento")
     ap.add_argument("--w", type=float, default=1.0, help="peso da heurística (Weighted A*)")
-    ap.add_argument("--desempate", choices=("fifo", "h"), default="fifo")
     ap.add_argument("--sem-mapa", action="store_true", help="não desenhar o mapa")
     args = ap.parse_args()
 
@@ -52,7 +51,7 @@ def main() -> None:
     elif args.heur or args.w != 1:
         ap.error("--heur e --w só se aplicam com --alg astar")
 
-    r = pesquisar(grelha, args.mov, heuristica, w=args.w, desempate=args.desempate)
+    r = pesquisar(grelha, args.mov, heuristica, w=args.w)
     nome = "Dijkstra" if heuristica is None else f"A* ({heuristica}, w = {args.w:g})"
     print(f"{grelha.nome}: {grelha.linhas}x{grelha.colunas}, S = {grelha.inicio}, G = {grelha.objetivo}")
     print(f"{nome}, {args.mov} direções")
