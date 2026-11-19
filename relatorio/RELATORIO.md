@@ -21,7 +21,7 @@ Assim, nenhum movimento custa menos do que a distância que h assume.
 |---|---|---|
 | Manhattan, dx + dy | admissível e consistente | **não admissível**: conta 2 por diagonal, que custa √2 |
 | Euclidiana, √(dx² + dy²) | admissível e consistente | admissível e consistente |
-| Octile, max + (√2 − 1)·min | admissível e consistente | admissível e consistente; a mais informada |
+| Octile, max + (√2 − 1)·min | admissível e consistente | admissível e consistente; a mais informada (≥ Euclidiana e ≥ Chebyshev, max(dx, dy)) |
 
 ## 2. Cenários e metodologia
 
